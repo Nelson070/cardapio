@@ -4,19 +4,18 @@ import urllib.parse
 # Número do WhatsApp para enviar o pedido
 WHATSAPP_NUMBER = "+5599991831701"  
 
-# Dados do menu com imagens
+# Dados do menu com imagens externas para reduzir peso
 MENU = {
-    "Pizza Margherita": {"preco": 30.0, "imagem": "OIP__1_-removebg-preview.png"},
-    "Hambúrguer Artesanal": {"preco": 25.0, "imagem": "11013540.png"},
-    "Lasanha Bolonhesa": {"preco": 35.0, "imagem": "3c42feb1-9d73-4c03-bcdd-a496e59f4994.jpg"},
-    "Salada Caesar": {"preco": 20.0, "imagem": "chicken-caesar-salad.jpg"},
-    "Sushi Combo": {"preco": 50.0, "imagem": "img_dueto-min.png"}
+    "Pizza Margherita": {"preco": 30.0, "imagem": "https://example.com/OIP__1_-removebg-preview.png"},
+    "Hambúrguer Artesanal": {"preco": 25.0, "imagem": "https://example.com/11013540.png"},
+    "Lasanha Bolonhesa": {"preco": 35.0, "imagem": "https://example.com/3c42feb1-9d73-4c03-bcdd-a496e59f4994.jpg"},
+    "Salada Caesar": {"preco": 20.0, "imagem": "https://example.com/chicken-caesar-salad.jpg"},
+    "Sushi Combo": {"preco": 50.0, "imagem": "https://example.com/img_dueto-min.png"}
 }
 
 def menu():
     """Tela do menu do restaurante."""
-    st.markdown(
-        """
+    st.markdown("""
         <style>
             body {
                 background-color: #D3D3D3;
@@ -24,9 +23,8 @@ def menu():
                 font-family: Arial, sans-serif;
             }
         </style>
-        """,
-        unsafe_allow_html=True
-    )
+        """, unsafe_allow_html=True)
+
     st.markdown("<h1 style='text-align: center; color:rgb(255, 0, 0);'>Nosso Cardápio</h1>", unsafe_allow_html=True)
     
     search = st.text_input("Buscar no menu", "")
@@ -39,7 +37,7 @@ def menu():
             if st.button(f"Adicionar {item}"):
                 st.session_state["carrinho"].append((item, dados['preco']))
                 st.success(f"{item} adicionado ao carrinho!")
-    
+
     st.markdown("## Carrinho de Compras")
     if st.session_state["carrinho"]:
         total = 0
