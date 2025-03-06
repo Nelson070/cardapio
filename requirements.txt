@@ -1,3 +1,2 @@
 streamlit
-psycopg2
-urllib.parse
+psycopg2-binary
