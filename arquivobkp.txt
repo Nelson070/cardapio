@@ -9,6 +9,7 @@ WHATSAPP_NUMBER = "+5599991831701"
 # Senha do dono do restaurante para visualizar os pedidos
 ADMIN_PASSWORD = "1234"
 
+# Conexão com o PostgreSQL
 DB_CONFIG = {
     "dbname": "restaurante_db",
     "user": "postgres",
@@ -18,64 +19,28 @@ DB_CONFIG = {
 }
 
 def conectar_bd():
-    """Função para conectar ao banco de dados PostgreSQL."""
     return psycopg2.connect(**DB_CONFIG)
+    
 
 def criar_tabela():
-    """Cria a tabela de pedidos no banco de dados, caso não exista."""
-    with conectar_bd() as conn:
-        with conn.cursor() as cur:
-            cur.execute(''' 
-                CREATE TABLE IF NOT EXISTS pedidos (
-                    id SERIAL PRIMARY KEY,
-                    ticket_numero VARCHAR(10) UNIQUE,
-                    nome_cliente VARCHAR(255),
-                    endereco TEXT,
-                    cep VARCHAR(20),
-                    telefone VARCHAR(20),
-                    itens TEXT,
-                    total NUMERIC(10,2),
-                    forma_pagamento VARCHAR(50),
-                    status VARCHAR(50) DEFAULT 'Aguardando'
-                )
-            ''')
-            conn.commit()
-
-# Salvar pedido no banco
-def salvar_pedido(ticket_numero, nome, endereco, cep, telefone, itens, total, pagamento):
-    """Salva um pedido no banco de dados."""
-    try:
-        with conectar_bd() as conn:
-            with conn.cursor() as cur:
-                cur.execute(''' 
-                    INSERT INTO pedidos (ticket_numero, nome_cliente, endereco, cep, telefone, itens, total, forma_pagamento) 
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ''', (ticket_numero, nome, endereco, cep, telefone, itens, total, pagamento))
-            conn.commit()  # 🔥 Salva as alterações no banco
-        print(f"✅ Pedido {ticket_numero} salvo com sucesso!")
-    except Exception as e:
-        print(f"❌ Erro ao salvar pedido: {e}")
-
-# Atualizar status do pedido
-def atualizar_status(ticket_numero, novo_status):
-    with conectar_bd() as conn:
-        with conn.cursor() as cur:
-            cur.execute(''' 
-                UPDATE pedidos SET status = %s WHERE ticket_numero = %s
-            ''', (novo_status, ticket_numero))
-            conn.commit()
-
-# Buscar pedidos no banco de dados
-def buscar_pedidos(status_filtro=None):
-    with conectar_bd() as conn:
-        with conn.cursor() as cur:
-            query = "SELECT ticket_numero, nome_cliente, endereco, cep, telefone, itens, total, forma_pagamento, status FROM pedidos"
-            if status_filtro:
-                query += " WHERE status = %s"
-                cur.execute(query, (status_filtro,))
-            else:
-                cur.execute(query)
-            return cur.fetchall()
+    conn = conectar_bd()
+    cur = conn.cursor()
+    cur.execute(''' 
+        CREATE TABLE IF NOT EXISTS pedidos (
+            id SERIAL PRIMARY KEY,
+            ticket_numero VARCHAR(10) UNIQUE,
+            nome_cliente VARCHAR(255),
+            endereco TEXT,
+            telefone VARCHAR(20),
+            itens TEXT,
+            total NUMERIC(10,2),
+            forma_pagamento VARCHAR(50),
+            status VARCHAR(50) DEFAULT 'Aguardando'
+        )
+    ''')
+    conn.commit()
+    cur.close()
+    conn.close()
 
 # Criar a tabela no banco de dados
 criar_tabela()
@@ -83,6 +48,9 @@ criar_tabela()
 # Inicializando session_state
 if "carrinho" not in st.session_state:
     st.session_state["carrinho"] = []
+
+if "pedidos" not in st.session_state:
+    st.session_state["pedidos"] = []
 
 # Dados do menu com URLs das imagens
 MENU = {
@@ -95,6 +63,41 @@ MENU = {
 
 # Logo do restaurante
 LOGO_URL = "imagens/logo.png"
+
+def salvar_pedido(ticket_numero, nome, endereco, telefone, itens, total, pagamento):
+    conn = conectar_bd()
+    cur = conn.cursor()
+    cur.execute(''' 
+        INSERT INTO pedidos (ticket_numero, nome_cliente, endereco, telefone, itens, total, forma_pagamento) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    ''', (ticket_numero, nome, endereco, telefone, itens, total, pagamento))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def atualizar_status(ticket_numero, novo_status):
+    conn = conectar_bd()
+    cur = conn.cursor()
+    cur.execute(''' 
+        UPDATE pedidos SET status = %s WHERE ticket_numero = %s
+    ''', (novo_status, ticket_numero))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def buscar_pedidos(status_filtro=None):
+    conn = conectar_bd()
+    cur = conn.cursor()
+    query = "SELECT ticket_numero, nome_cliente, endereco, telefone, itens, total, forma_pagamento, status FROM pedidos"
+    if status_filtro:
+        query += " WHERE status = %s"
+        cur.execute(query, (status_filtro,))
+    else:
+        cur.execute(query)
+    pedidos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return pedidos
 
 def menu():
     """Tela do menu do restaurante."""
@@ -134,7 +137,6 @@ def menu():
         st.markdown("## Dados para Entrega")
         nome = st.text_input("Nome Completo")
         endereco = st.text_input("Endereço")
-        cep = st.text_input("Cep")
         telefone = st.text_input("Telefone")
         pagamento = st.selectbox("Forma de Pagamento", ["Pix", "Dinheiro", "Cartão de Crédito"])
         
@@ -149,15 +151,13 @@ def menu():
 Pedido {ticket_id}
 Nome: {nome}
 Endereço: {endereco}
-Cep: {cep}
 Telefone: {telefone}
 Itens:
 {itens_formatados}
 Total: {total_formatado}
 Pagamento: {pagamento}
 """
-                # Salvar no banco de dados
-                salvar_pedido(ticket_id, nome, endereco, cep, telefone, itens_formatados, total, pagamento)
+                st.session_state["pedidos"].append(pedido_texto)
                 
                 # Codificando a mensagem para URL
                 mensagem_whatsapp = urllib.parse.quote(pedido_texto)
@@ -171,21 +171,28 @@ Pagamento: {pagamento}
         st.write("Carrinho vazio")
 
 def visualizar_pedidos():
+    """Tela para o dono visualizar os pedidos."""
     st.title("📋 Pedidos Recebidos")
     senha = st.text_input("Digite a senha para acessar", type="password")
     
     if senha == ADMIN_PASSWORD:
         pedidos = buscar_pedidos()
+        status_possiveis = ["Aguardando", "Em Preparo", "Saiu para Entrega", "Concluído"]
         if pedidos:
             for pedido in pedidos:
-                ticket_numero, nome_cliente, endereco, cep, telefone, itens, total, forma_pagamento, status = pedido
-                st.text_area(f"Pedido {ticket_numero}", f"Nome: {nome_cliente}\nEndereço: {endereco}\nCep: {cep}\nTelefone: {telefone}\nItens: {itens}\nTotal: R$ {total:.2f}\nPagamento: {forma_pagamento}\nStatus: {status}", height=150)
-                novo_status = st.selectbox(f"Atualizar status do pedido {ticket_numero}", ["Aguardando", "Em Preparo", "Saiu para Entrega", "Concluído"], key=f"status_{ticket_numero}")
-                if st.button(f"Atualizar {ticket_numero}"):
+                ticket_numero, nome, endereco, telefone, itens, total, pagamento, status = pedido
+                st.text_area(f"Pedido {ticket_numero}", f"Nome: {nome}\nEndereço: {endereco}\nTelefone: {telefone}\nItens: {itens}\nTotal: R$ {total:.2f}\nPagamento: {pagamento}\nStatus: {status}", height=150)
+                
+                # Usar os status possíveis no selectbox
+                novo_status = st.selectbox(
+                    f"Atualizar status do pedido {ticket_numero}",
+                    status_possiveis,
+                    index=status_possiveis.index(status) if status in status_possiveis else 0
+                )
+                
+                if st.button(f"Atualizar Status {ticket_numero}"):
                     atualizar_status(ticket_numero, novo_status)
                     st.success(f"Status do pedido {ticket_numero} atualizado para {novo_status}")
-        else:
-            st.write("Nenhum pedido encontrado.")
     elif senha:
         st.error("Senha incorreta!")
 
@@ -199,8 +206,8 @@ def painel_delivery():
     pedidos = buscar_pedidos(status_filtro)
     if pedidos:
         for pedido in pedidos:
-            ticket_numero, nome_cliente, endereco, cep, telefone, itens, total, forma_pagamento, status = pedido
-            st.text_area(f"Pedido {ticket_numero}", f"Nome: {nome_cliente}\nEndereço: {endereco}\nCep: {cep}\nTelefone: {telefone}\nItens: {itens}\nTotal: R$ {total:.2f}\nPagamento: {forma_pagamento}\nStatus: {status}", height=150)
+            ticket_numero, nome, endereco, telefone, itens, total, pagamento, status = pedido
+            st.text_area(f"Pedido {ticket_numero}", f"Nome: {nome}\nEndereço: {endereco}\nTelefone: {telefone}\nItens: {itens}\nTotal: R$ {total:.2f}\nPagamento: {pagamento}\nStatus: {status}", height=150)
     else:
         st.write("Nenhum pedido encontrado com esse status.")
 
