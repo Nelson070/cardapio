@@ -2,6 +2,7 @@ import streamlit as st
 import random
 import psycopg2
 import urllib.parse
+import os
 
 # Número de WhatsApp para enviar o pedido
 WHATSAPP_NUMBER = "+5599991831701"
@@ -11,11 +12,11 @@ ADMIN_PASSWORD = "1234"
 
 # Conexão com o PostgreSQL
 DB_CONFIG = {
-    "dbname": "restaurante_db",
-    "user": "postgres",
-    "password": "69427",
-    "host": "localhost",
-    "port": "5432"
+    "dbname": os.getenv("DB_NAME", "restaurante_db"),
+    "user": os.getenv("DB_USER", "postgres"),
+    "password": os.getenv("DB_PASSWORD", "69427"),
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": os.getenv("DB_PORT", "5432")
 }
 
 def conectar_bd():
