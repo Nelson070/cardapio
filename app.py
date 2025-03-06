@@ -10,7 +10,7 @@ WHATSAPP_NUMBER = "+5599991831701"
 # Senha do dono do restaurante para visualizar os pedidos
 ADMIN_PASSWORD = "1234"
 
-# Conexão com o PostgreSQL
+# Conexão com o PostgreSQL usando variáveis de ambiente
 DB_CONFIG = {
     "dbname": os.getenv("DB_NAME", "restaurante_db"),
     "user": os.getenv("DB_USER", "postgres"),
@@ -52,14 +52,17 @@ if "carrinho" not in st.session_state:
 if "pedidos" not in st.session_state:
     st.session_state["pedidos"] = []
 
-# Dados do menu com imagens
+# Dados do menu com URLs das imagens
 MENU = {
-    "Pizza Margherita": {"preco": 30.0, "imagem": "imagens/OIP__1_-removebg-preview.png"},
-    "Hambúrguer Artesanal": {"preco": 25.0, "imagem": "imagens/11013540.png"},
-    "Lasanha Bolonhesa": {"preco": 35.0, "imagem": "imagens/3c42feb1-9d73-4c03-bcdd-a496e59f4994-removebg-preview.png"},
-    "Salada Caesar": {"preco": 20.0, "imagem": "imagens/chicken-caesar-salad.jpg"},
-    "Sushi Combo": {"preco": 50.0, "imagem": "imagens/img_dueto-min.png"}
+    "Pizza Margherita": {"preco": 30.0, "imagem": "https://exemplo.com/pizza.png"},
+    "Hambúrguer Artesanal": {"preco": 25.0, "imagem": "https://exemplo.com/hamburguer.png"},
+    "Lasanha Bolonhesa": {"preco": 35.0, "imagem": "https://exemplo.com/lasanha.png"},
+    "Salada Caesar": {"preco": 20.0, "imagem": "https://exemplo.com/salada.png"},
+    "Sushi Combo": {"preco": 50.0, "imagem": "https://exemplo.com/sushi.png"}
 }
+
+# Logo do restaurante
+LOGO_URL = "https://exemplo.com/logo.png"
 
 def salvar_pedido(ticket_numero, nome, endereco, telefone, itens, total, pagamento):
     conn = conectar_bd()
@@ -98,7 +101,7 @@ def buscar_pedidos(status_filtro=None):
 
 def menu():
     """Tela do menu do restaurante."""
-    st.image("imagens/logo.png", width=100)
+    st.image(LOGO_URL, width=100)
     st.title("Nosso Cardápio")
     search = st.text_input("Buscar no menu", "").lower()
     cols = st.columns(2)
