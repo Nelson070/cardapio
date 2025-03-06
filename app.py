@@ -1,6 +1,7 @@
 import streamlit as st
 import random
 import psycopg2
+import urllib.parse
 
 # Número de WhatsApp para enviar o pedido
 WHATSAPP_NUMBER = "+5599991831701"
@@ -42,6 +43,13 @@ def criar_tabela():
 
 # Criar a tabela no banco de dados
 criar_tabela()
+
+# Inicializando session_state
+if "carrinho" not in st.session_state:
+    st.session_state["carrinho"] = []
+
+if "pedidos" not in st.session_state:
+    st.session_state["pedidos"] = []
 
 # Dados do menu com imagens
 MENU = {
@@ -130,9 +138,28 @@ def menu():
         
         if st.button("Finalizar Pedido"):
             if nome and endereco and telefone:
-                ticket_numero = str(random.randint(1000, 9999))
-                salvar_pedido(ticket_numero, nome, endereco, telefone, ", ".join(itens), total, pagamento)
-                st.success(f"Pedido realizado com sucesso! Ticket: {ticket_numero}")
+                ticket_id = random.randint(1000, 9999)
+                
+                # Formatando a mensagem para WhatsApp
+                itens_formatados = "\n".join([f"{item} (R$ {preco:.2f})" for item, preco in st.session_state["carrinho"]])
+                total_formatado = f"R$ {total:.2f}"
+                pedido_texto = f"""
+Pedido {ticket_id}
+Nome: {nome}
+Endereço: {endereco}
+Telefone: {telefone}
+Itens:
+{itens_formatados}
+Total: {total_formatado}
+Pagamento: {pagamento}
+"""
+                st.session_state["pedidos"].append(pedido_texto)
+                
+                # Codificando a mensagem para URL
+                mensagem_whatsapp = urllib.parse.quote(pedido_texto)
+                url_whatsapp = f"https://wa.me/{WHATSAPP_NUMBER}?text={mensagem_whatsapp}"
+                st.markdown(f"[📲 Enviar Pedido pelo WhatsApp]({url_whatsapp})", unsafe_allow_html=True)
+                st.success(f"Pedido realizado com sucesso! Ticket: {ticket_id}")
                 st.session_state["carrinho"] = []
             else:
                 st.error("Por favor, preencha todos os campos de entrega.")
